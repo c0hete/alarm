@@ -1,6 +1,6 @@
 # alarm
 
-Heartbeat diario. Cada día un commit con un código binario de 8 bits. Si hay un `1`, hay un problema. **El repo no dice cuál.**
+Heartbeat cada 6h. Cada corrida deja un commit con un código binario de 8 bits. Si hay un `1`, hay un problema. **El repo no dice cuál.**
 
 ## Setup (una vez)
 
@@ -72,7 +72,7 @@ Variables vacías → bit correspondiente queda en `0` (slot deshabilitado).
 
 ## Cron
 
-`.github/workflows/daily.yml` corre a las **09:00 UTC** todos los días. Editable.
+`.github/workflows/daily.yml` corre **cada 6 horas** (00:00, 06:00, 12:00, 18:00 UTC). Editable.
 
 ## Filosofía
 

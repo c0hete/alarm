@@ -7,12 +7,12 @@ Dead-man switch creativo: un repo que se autocommitea **todos los días** con un
 - **El commit NO dice cuál slot falló.** Solo el número binario y la fecha.
 
 El doble propósito:
-1. **Racha de GitHub** — commits diarios automáticos = contribution graph verde.
+1. **Racha de GitHub** — commits automáticos cada 6h = contribution graph denso y constante.
 2. **Heartbeat silencioso** — si aparece un `1`, sabés que hay algo para mirar, pero el alarm nunca te dice qué. Vos investigás.
 
 ## Decisiones
 - **Stack:** Python 3.11+, sin frameworks. Deps mínimas: `requests`, `urllib3`.
-- **Trigger:** GitHub Actions cron diario (09:00 UTC). No requiere la PC encendida.
+- **Trigger:** GitHub Actions cron cada 6h (00:00, 06:00, 12:00, 18:00 UTC). No requiere la PC encendida.
 - **Output:** archivo nuevo por día en `state/YYYY-MM-DD.txt` con el código binario. Cambia siempre el archivo → siempre hay commit.
 - **Longitud:** 8 bits = 1 byte. 256 combinaciones posibles. Suficiente; si se necesitan más, se rompe la compatibilidad y se migra a 16.
 - **Privacidad por diseño:** la función de check nunca loguea QUÉ falló. Solo el agregado. Debug opcional con `--verbose`.

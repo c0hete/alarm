@@ -162,7 +162,7 @@ Parsea args, carga dotenv, ejecuta checks, decide el flujo según los flags.
 
 ```python
 def main() -> int:
-    parser = argparse.ArgumentParser(description="alarm — heartbeat diario")
+    parser = argparse.ArgumentParser(description="alarm — heartbeat cada 6h")
     parser.add_argument("--verbose", action="store_true", ...)
     parser.add_argument("--dry-run", action="store_true", ...)
     parser.add_argument("--quiet", action="store_true", ...)

@@ -199,7 +199,7 @@ No hay migrations. Cambios al registry de checks son compatibles hacia atrás (m
 
 ## Cron
 
-El workflow corre a las **09:00 UTC** todos los días. Para cambiar:
+El workflow corre **cada 6h** (00:00, 06:00, 12:00, 18:00 UTC). Para cambiar:
 
 1. Editar `.github/workflows/daily.yml`, línea `cron:`.
 2. Formato: `"M H * * *"` (minuto hora día-mes mes día-semana).

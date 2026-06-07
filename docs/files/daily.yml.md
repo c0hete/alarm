@@ -65,7 +65,7 @@ jobs:
 ```yaml
 on:
   schedule:
-    - cron: "0 9 * * *"
+    - cron: "0 */6 * * *"
   workflow_dispatch:
 ```
 
@@ -73,13 +73,13 @@ Dos formas de disparar el workflow:
 
 ### 1. `schedule` (cron)
 
-Corre automáticamente a las **09:00 UTC todos los días**.
+Corre automáticamente **cada 6 horas**: 00:00, 06:00, 12:00, 18:00 UTC.
 
 Formato: `"M H DoM Mo DoW"` (minuto hora día-del-mes mes día-de-la-semana).
-- `0 9 * * *` = minuto 0, hora 9, todos los días del mes, todos los meses, todos los días de la semana
+- `0 */6 * * *` = minuto 0, cada 6 horas (00:00, 06:00, 12:00, 18:00), todos los días
 - En UTC. **No** la hora local del runner.
 
-**Importante:** GitHub Actions cron tiene una **cola de hasta ~15-30 minutos de delay**. A veces 09:00 UTC puede terminar corriendo a las 09:15. No es un cron en tiempo real.
+**Importante:** GitHub Actions cron tiene una **cola de hasta ~15-30 minutos de delay**. A veces las 00:00 UTC pueden terminar corriendo a las 00:15. No es un cron en tiempo real.
 
 Para cambiar la hora, editá esta línea. Para deshabilitar el cron pero dejar el workflow_dispatch, comentá la sección `schedule:`.
 
@@ -243,7 +243,7 @@ O desde la UI: https://github.com/c0hete/alarm/settings/secrets/actions → "New
 
 ```yaml
 schedule:
-  - cron: "0 9 * * *"   # ← cambiar esto
+  - cron: "0 */6 * * *"  # ← cambiar esto
 ```
 
 Formato cron de GitHub Actions:
@@ -258,7 +258,10 @@ Formato cron de GitHub Actions:
 ```
 
 **Siempre en UTC.** Para Chile (UTC-3 / UTC-4 con DST):
-- 09:00 UTC = 06:00 CLT (invierno) o 05:00 CLST (verano)
+- 00:00 UTC = 20:00 CLT (día anterior, invierno) o 21:00 CLST (verano)
+- 06:00 UTC = 02:00 CLT (invierno) o 03:00 CLST (verano)
+- 12:00 UTC = 08:00 CLT (invierno) o 09:00 CLST (verano)
+- 18:00 UTC = 14:00 CLT (invierno) o 15:00 CLST (verano)
 - 12:00 UTC = 09:00 CLT (invierno) o 08:00 CLST (verano)
 
 ## Troubleshooting

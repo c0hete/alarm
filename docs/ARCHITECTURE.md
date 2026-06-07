@@ -4,7 +4,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    GitHub Actions (cron 09:00 UTC)          │
+│                    GitHub Actions (cron cada 6h)            │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │  .github/workflows/daily.yml                         │   │
 │  │  1. Checkout                                         │   │
@@ -64,7 +64,7 @@ alarm/
 │   ├── github_status.py  # check() → slot 5
 │   └── backup.py         # check() → slot 6
 └── .github/workflows/
-    └── daily.yml         # GitHub Actions cron
+    └── daily.yml         # GitHub Actions cron cada 6h
 ```
 
 ### Dependencias entre módulos
@@ -82,7 +82,7 @@ alarm.py
 
 ## Flujo de datos (happy path)
 
-1. **Cron dispara el workflow** a las 09:00 UTC.
+1. **Cron dispara el workflow** cada 6h (00:00, 06:00, 12:00, 18:00 UTC).
 2. **Checkout** baja el repo en un runner limpio (Ubuntu + Python 3.11).
 3. **Install deps** instala `requests` + `urllib3`.
 4. **Mask secrets** corre `::add-mask::` para que cualquier secret que aparezca en logs se muestre como `***`.
@@ -136,21 +136,25 @@ Es la decisión central del producto. Razones:
 ## Ciclo de vida de un commit
 
 ```
-09:00 UTC  →  cron dispara el workflow
-09:00:01   →  checkout + setup Python
-09:00:05   →  install deps
-09:00:10   →  mask secrets
-09:00:11   →  python alarm.py --quiet
+Cron cada 6h → workflow corre (~10-15s)
+
+```
+HH:00:00  →  cron dispara el workflow
+HH:00:01  →  checkout + setup Python
+HH:00:05  →  install deps
+HH:00:10  →  mask secrets
+HH:00:11  →  python alarm.py --quiet
             ├─ load_dotenv (no hace nada en CI)
             ├─ build_registry → 8 checks
             ├─ execute 8 checks (~ 0.5-2s total)
             ├─ assemble "00000000"
-            ├─ write state/2026-06-07.txt
+            ├─ write state/YYYY-MM-DD-HHMM.txt
             ├─ configure push auth (rewrite remote URL)
             ├─ git add state/
-            ├─ git commit -m "alarm: ..."
+            ├─ git commit -m "alarm: YYYY-MM-DD HH:MM = ..."
             └─ git push
-09:00:13   →  workflow done
+HH:00:13  →  workflow done
+```
             └─ commit visible en GitHub
 ```
 

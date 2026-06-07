@@ -1,6 +1,6 @@
 # alarm — Documentación
 
-Heartbeat diario que ejecuta 8 checks y commitea un código binario de 8 bits. Si hay un `1`, hay un problema (sin revelar cuál).
+Heartbeat cada 6 horas que ejecuta 8 checks y commitea un código binario de 8 bits. Si hay un `1`, hay un problema (sin revelar cuál).
 
 ## Tabla de contenidos
 
@@ -28,7 +28,7 @@ Heartbeat diario que ejecuta 8 checks y commitea un código binario de 8 bits. S
 
 Dos razones simultáneas:
 
-1. **Racha de GitHub.** Commits diarios automáticos = contribution graph verde. Mantiene el streak vivo incluso en semanas tranquilas.
+1. **Racha de GitHub.** Commits automáticos cada 6h = contribution graph denso. Mantiene el streak vivo y el repo visualmente activo.
 2. **Dead-man switch creativo.** Si aparece un `1` en un commit, sabés que algo falló. **El commit no dice qué** — tenés que ir a investigar. Es la divergencia intencional entre "tener señal" y "tener diagnóstico".
 
 ## Cómo se ve
@@ -57,7 +57,7 @@ python alarm.py --verbose        # muestra qué bit falló
 python alarm.py                  # escribe state/ y commitea
 ```
 
-Para correr en CI: el workflow `daily.yml` ya está configurado para correr a las 09:00 UTC.
+Para correr en CI: el workflow `daily.yml` ya está configurado para correr cada 6h (00:00, 06:00, 12:00, 18:00 UTC).
 
 ## Slots (mapa del código binario)
 
@@ -89,7 +89,7 @@ Slots con la env var vacía quedan deshabilitados (devuelven `0`).
 - **Versión:** 1.0
 - **Estado:** Vivo
 - **URL:** https://github.com/c0hete/alarm
-- **Trigger:** GitHub Actions cron 09:00 UTC
+- **Trigger:** GitHub Actions cron cada 6h
 - **Lenguaje:** Python 3.11+
 - **Dependencias:** `requests`, `urllib3` (todo lo demás es stdlib)
 
