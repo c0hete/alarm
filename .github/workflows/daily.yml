@@ -61,6 +61,5 @@ jobs:
           git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
 
       - name: Run alarm
-        # --quiet: cero output. El commit + push deja toda la info pública que
-        # el alarm quiere revelar (código binario + fecha), sin log de URLs.
-        run: python alarm.py --quiet
+        # DEBUG: --verbose temporal para ver el error
+        run: python alarm.py --verbose 2>&1; echo "exit=$?"
