@@ -70,12 +70,14 @@ def git_silent(*args: str) -> subprocess.CompletedProcess:
     """Ejecuta git capturando TODO el output. No se imprime nada en stdout/stderr
     a menos que la llamada falle Y se llame explícitamente con check=True.
     """
+    env = os.environ.copy()
+    env["GIT_TERMINAL_PROMPT"] = "0"  # nunca colgar esperando credenciales
     return subprocess.run(
         ["git", *args],
         cwd=ROOT,
         capture_output=True,
         text=True,
-        env={"PATH": os.environ.get("PATH", ""), "GIT_TERMINAL_PROMPT": "0"},
+        env=env,
     )
 
 

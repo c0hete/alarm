@@ -54,6 +54,12 @@ jobs:
             fi
           done
 
+      - name: Configure git auth
+        # persist-credentials: false en el checkout borra el token de .git/config.
+        # Reconfiguramos el rewrite para que git push use el GITHUB_TOKEN efímero.
+        run: |
+          git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+
       - name: Run alarm
         # --quiet: cero output. El commit + push deja toda la info pública que
         # el alarm quiere revelar (código binario + fecha), sin log de URLs.
