@@ -60,8 +60,8 @@ def assemble_code(results: list[bool]) -> str:
 
 def write_state(code: str) -> Path:
     STATE_DIR.mkdir(exist_ok=True)
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    out = STATE_DIR / f"{today}.txt"
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d-%H%M")
+    out = STATE_DIR / f"{stamp}.txt"
     out.write_text(code + "\n", encoding="utf-8")
     return out
 
@@ -107,8 +107,8 @@ def configure_push_auth() -> None:
 
 
 def commit_and_push(code: str, dry_run: bool) -> None:
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    msg = f"alarm: {today} = {code}"
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M")
+    msg = f"alarm: {stamp} = {code}"
     if dry_run:
         return
 
@@ -119,10 +119,11 @@ def commit_and_push(code: str, dry_run: bool) -> None:
     git_silent("add", "state/")
     diff = git_silent("diff", "--cached", "--quiet")
     if diff.returncode == 0:
-        return  # sin cambios (mismo día re-ejecutado)
+        return  # sin cambios (mismo archivo re-escrito con mismo contenido)
 
-    commit = git_silent("commit", "-m", msg)
-    if commit.returncode != 0:
+    if git_silent("commit", "-m", msg).returncode != 0:
+        raise SystemExit(1)
+    if git_silent("push", "origin", "HEAD").returncode != 0:
         raise SystemExit(1)
     push = git_silent("push", "origin", "HEAD")
     if push.returncode != 0:
