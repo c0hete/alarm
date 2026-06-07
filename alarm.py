@@ -95,9 +95,13 @@ def commit_and_push(code: str, dry_run: bool) -> None:
     if diff.returncode == 0:
         return  # sin cambios (mismo día re-ejecutado)
 
-    if git_silent("commit", "-m", msg).returncode != 0:
+    commit = git_silent("commit", "-m", msg)
+    if commit.returncode != 0:
+        print(f"commit failed: {commit.stderr}", file=sys.stderr)
         raise SystemExit(1)
-    if git_silent("push", "origin", "HEAD").returncode != 0:
+    push = git_silent("push", "origin", "HEAD")
+    if push.returncode != 0:
+        print(f"push failed: {push.stderr}", file=sys.stderr)
         raise SystemExit(1)
 
 
