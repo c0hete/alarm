@@ -82,28 +82,28 @@ def git_silent(*args: str) -> subprocess.CompletedProcess:
 
 
 def configure_push_auth() -> None:
-    """Si GITHUB_TOKEN está en env, configura un rewrite de URL para que
-    `git push origin` use el token efímero. Silencioso si el token no está.
+    """Si GITHUB_TOKEN está en env, inyecta el token en la URL del remote `origin`
+    para que `git push` use el token. Silencioso si el token no está.
 
-    Importante: el checkout de actions/checkout deja un `extraheader` de basic
-    auth en .git/config que GitHub ya no acepta. Hay que removerlo o el push
-    sigue intentando usar basic auth.
+    También limpia el `extraheader` de basic auth que deja actions/checkout
+    y que GitHub ya no acepta.
     """
-    # Limpiar cualquier credencial básica que dejó actions/checkout
+    # Limpiar credenciales básicas que dejó actions/checkout
     git_silent("config", "--local", "--unset-all", "http.https://github.com/.extraheader")
-    git_silent("config", "--local", "--remove-section", "http.https://github.com/")
 
     token = os.environ.get("GITHUB_TOKEN", "").strip()
     if not token:
         return
-    # DEBUG: print config state
-    import subprocess
-    print(f"DEBUG: extraheader unset, token length={len(token)}", file=sys.stderr)
-    rewrite = f'url."https://x-access-token:{token}@github.com/".insteadOf "https://github.com/"'
-    git_silent("config", "--local", rewrite)
-    # DEBUG: verify
-    r = subprocess.run(["git", "config", "--local", "--get-regexp", r"^url\."], cwd=ROOT, capture_output=True, text=True)
-    print(f"DEBUG: url config after set: {r.stdout!r} stderr={r.stderr!r}", file=sys.stderr)
+
+    # Leer URL actual del remote y reescribir con token inline
+    current = git_silent("config", "--get", "remote.origin.url")
+    if current.returncode != 0 or not current.stdout.strip():
+        return
+    url = current.stdout.strip()
+    # Reemplazar https://github.com/ por https://x-access-token:TOKEN@github.com/
+    if "github.com/" in url and "x-access-token" not in url:
+        new_url = url.replace("https://github.com/", f"https://x-access-token:{token}@github.com/", 1)
+        git_silent("remote", "set-url", "origin", new_url)
 
 
 def commit_and_push(code: str, dry_run: bool) -> None:
@@ -123,11 +123,9 @@ def commit_and_push(code: str, dry_run: bool) -> None:
 
     commit = git_silent("commit", "-m", msg)
     if commit.returncode != 0:
-        print(f"commit failed: {commit.stderr}", file=sys.stderr)
         raise SystemExit(1)
     push = git_silent("push", "origin", "HEAD")
     if push.returncode != 0:
-        print(f"push failed: {push.stderr}", file=sys.stderr)
         raise SystemExit(1)
 
 

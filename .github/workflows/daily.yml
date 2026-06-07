@@ -55,7 +55,8 @@ jobs:
           done
 
       - name: Run alarm
-        # DEBUG: verbose para ver el error
+        # El script configura su propia auth desde GITHUB_TOKEN si está disponible.
+        # Mantenemos --quiet para no filtrar info en logs públicos.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python alarm.py --verbose 2>&1
+        run: python alarm.py --quiet
