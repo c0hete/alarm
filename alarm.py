@@ -84,12 +84,20 @@ def git_silent(*args: str) -> subprocess.CompletedProcess:
 def configure_push_auth() -> None:
     """Si GITHUB_TOKEN está en env, configura un rewrite de URL para que
     `git push origin` use el token efímero. Silencioso si el token no está.
+
+    Importante: el checkout de actions/checkout deja un `extraheader` de basic
+    auth en .git/config que GitHub ya no acepta. Hay que removerlo o el push
+    sigue intentando usar basic auth.
     """
+    # Limpiar cualquier credencial básica que dejó actions/checkout
+    git_silent("config", "--local", "--unset-all", "http.https://github.com/.extraheader")
+    git_silent("config", "--local", "--remove-section", "http.https://github.com/")
+
     token = os.environ.get("GITHUB_TOKEN", "").strip()
     if not token:
         return
     rewrite = f'url."https://x-access-token:{token}@github.com/".insteadOf "https://github.com/"'
-    git_silent("config", "--global", rewrite)
+    git_silent("config", "--local", rewrite)
 
 
 def commit_and_push(code: str, dry_run: bool) -> None:
