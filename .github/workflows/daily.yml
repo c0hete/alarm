@@ -58,7 +58,11 @@ jobs:
         # persist-credentials: false en el checkout borra el token de .git/config.
         # Reconfiguramos el rewrite para que git push use el GITHUB_TOKEN efímero.
         run: |
+          set +e
+          echo "GITHUB_TOKEN length: ${#GITHUB_TOKEN}"
           git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+          echo "git config result: $?"
+          git config --global --get-regexp '^url\.'
 
       - name: Run alarm
         # DEBUG: --verbose temporal para ver el error
