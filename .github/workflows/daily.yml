@@ -1,0 +1,60 @@
+name: alarm
+
+on:
+  schedule:
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+
+# Solo lo mínimo: push al repo. Sin packages, sin id-token, sin deployments.
+permissions:
+  contents: write
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      # Pasar secretos como env vars solo si están seteados; usar scripts::add-mask
+      # para evitar que aparezcan en logs incluso si se imprimen por accidente.
+      URL_PRIMARY: ${{ secrets.URL_PRIMARY || '' }}
+      URL_SECONDARY: ${{ secrets.URL_SECONDARY || '' }}
+      URL_TERTIARY: ${{ secrets.URL_TERTIARY || '' }}
+      SSL_PRIMARY: ${{ secrets.SSL_PRIMARY || '' }}
+      SSL_SECONDARY: ${{ secrets.SSL_SECONDARY || '' }}
+      BACKUP_MANIFEST: ${{ secrets.BACKUP_MANIFEST || '' }}
+      BACKUP_MAX_AGE_DAYS: ${{ secrets.BACKUP_MAX_AGE_DAYS || '2' }}
+      CUSTOM_API_URL: ${{ secrets.CUSTOM_API_URL || '' }}
+      CHECK_TIMEOUT: ${{ secrets.CHECK_TIMEOUT || '10' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # No persistir el GITHUB_TOKEN en .git/config: el push lo hace el script
+          # con un token de un solo uso, y el runner no guarda credenciales.
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Mask secrets in logs
+        # Si por accidente el script imprimiera algún secret, GH Actions lo reemplaza
+        # por *** en el log. Es defense-in-depth, no un fix de root cause.
+        run: |
+          for v in URL_PRIMARY URL_SECONDARY URL_TERTIARY SSL_PRIMARY SSL_SECONDARY BACKUP_MANIFEST CUSTOM_API_URL; do
+            val="${!v}"
+            if [ -n "$val" ]; then
+              echo "::add-mask::$val"
+            fi
+          done
+
+      - name: Run alarm
+        # --quiet: cero output. El commit + push deja toda la info pública que
+        # el alarm quiere revelar (código binario + fecha), sin log de URLs.
+        run: python alarm.py --quiet
