@@ -54,16 +54,9 @@ jobs:
             fi
           done
 
-      - name: Configure git auth
-        # persist-credentials: false en el checkout borra el token de .git/config.
-        # Reconfiguramos el rewrite para que git push use el GITHUB_TOKEN efímero.
-        run: |
-          set +e
-          echo "GITHUB_TOKEN length: ${#GITHUB_TOKEN}"
-          git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
-          echo "git config result: $?"
-          git config --global --get-regexp '^url\.'
-
       - name: Run alarm
-        # DEBUG: --verbose temporal para ver el error
-        run: python alarm.py --verbose 2>&1; echo "exit=$?"
+        # El script configura su propia auth desde GITHUB_TOKEN si está disponible.
+        # Mantenemos --quiet para no filtrar info en logs públicos.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python alarm.py --quiet

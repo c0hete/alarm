@@ -81,6 +81,17 @@ def git_silent(*args: str) -> subprocess.CompletedProcess:
     )
 
 
+def configure_push_auth() -> None:
+    """Si GITHUB_TOKEN está en env, configura un rewrite de URL para que
+    `git push origin` use el token efímero. Silencioso si el token no está.
+    """
+    token = os.environ.get("GITHUB_TOKEN", "").strip()
+    if not token:
+        return
+    rewrite = f'url."https://x-access-token:{token}@github.com/".insteadOf "https://github.com/"'
+    git_silent("config", "--global", rewrite)
+
+
 def commit_and_push(code: str, dry_run: bool) -> None:
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     msg = f"alarm: {today} = {code}"
@@ -89,6 +100,7 @@ def commit_and_push(code: str, dry_run: bool) -> None:
 
     git_silent("config", "user.email", "alarm@users.noreply.github.com")
     git_silent("config", "user.name", "alarm")
+    configure_push_auth()
 
     git_silent("add", "state/")
     diff = git_silent("diff", "--cached", "--quiet")
