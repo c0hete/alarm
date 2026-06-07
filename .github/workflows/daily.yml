@@ -14,8 +14,16 @@ jobs:
   heartbeat:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # Si un run se queda colgado y dispara el próximo, cancelar el viejo para
+    # evitar race conditions en .git/ y push simultáneo.
+    concurrency:
+      group: alarm-${{ github.ref }}
+      cancel-in-progress: true
     env:
-      # Pasar secretos como env vars solo si están seteados; usar scripts::add-mask
+      # Forzar Node.js 24 en actions (actions/checkout@v4 y actions/setup-python@v5
+      # usan Node 20, deprecado. GH fuerza Node 24 a partir del 16-jun-2026).
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      # Pasar secretos como env vars solo si están seteados; usar ::add-mask
       # para evitar que aparezcan en logs incluso si se imprimen por accidente.
       URL_PRIMARY: ${{ secrets.URL_PRIMARY || '' }}
       URL_SECONDARY: ${{ secrets.URL_SECONDARY || '' }}
@@ -47,8 +55,9 @@ jobs:
       - name: Mask secrets in logs
         # Si por accidente el script imprimiera algún secret, GH Actions lo reemplaza
         # por *** en el log. Es defense-in-depth, no un fix de root cause.
+        # GITHUB_TOKEN está auto-maskeado por GH Actions.
         run: |
-          for v in URL_PRIMARY URL_SECONDARY URL_TERTIARY SSL_PRIMARY SSL_SECONDARY BACKUP_MANIFEST CUSTOM_API_URL; do
+          for v in URL_PRIMARY URL_SECONDARY URL_TERTIARY SSL_PRIMARY SSL_SECONDARY BACKUP_MANIFEST BACKUP_MAX_AGE_DAYS CUSTOM_API_URL CHECK_TIMEOUT; do
             val="${!v}"
             if [ -n "$val" ]; then
               echo "::add-mask::$val"

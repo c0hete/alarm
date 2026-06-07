@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 from . import security
 
 
@@ -9,6 +11,6 @@ def check_url(env_var: str, timeout: int) -> bool:
     """True = problema. Vacío = slot deshabilitado (False)."""
     if not security.is_configured(env_var):
         return False
-    return security.safe_request(  # type: ignore[arg-type]
-        __import__("os").environ[env_var].strip(), timeout
+    return security.safe_request(
+        os.environ[env_var].strip(), timeout
     )

@@ -40,7 +40,14 @@ def validate_https_url(url: str) -> bool:
         parsed = urllib.parse.urlparse(url.strip())
     except (ValueError, AttributeError):
         return False
-    return parsed.scheme.lower() in _ALLOWED_SCHEMES and bool(parsed.hostname)
+    if parsed.scheme.lower() not in _ALLOWED_SCHEMES:
+        return False
+    if not parsed.hostname:
+        return False
+    # Bloquear credenciales embebidas en la URL (https://user:pass@host/...)
+    if parsed.username or parsed.password:
+        return False
+    return True
 
 
 def safe_request(url: str, timeout: int) -> bool:

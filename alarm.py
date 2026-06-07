@@ -1,4 +1,4 @@
-"""alarm — heartbeat diario. Ejecuta 8 checks y commitea el código binario.
+"""alarm — heartbeat cada 6h. Ejecuta 8 checks y commitea el código binario.
 
 Uso:
     python alarm.py                # silencioso, escribe state/, commitea y pushea
@@ -125,13 +125,10 @@ def commit_and_push(code: str, dry_run: bool) -> None:
         raise SystemExit(1)
     if git_silent("push", "origin", "HEAD").returncode != 0:
         raise SystemExit(1)
-    push = git_silent("push", "origin", "HEAD")
-    if push.returncode != 0:
-        raise SystemExit(1)
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="alarm — heartbeat diario")
+    parser = argparse.ArgumentParser(description="alarm — heartbeat cada 6h")
     parser.add_argument("--verbose", action="store_true", help="muestra qué slot falló (sin URLs)")
     parser.add_argument("--dry-run", action="store_true", help="no escribe ni commitea")
     parser.add_argument("--quiet", action="store_true", help="cero output, solo exit code")
