@@ -54,8 +54,16 @@ def load_dotenv() -> None:
             os.environ[key] = value
 
 
-def assemble_code(results: list[bool]) -> str:
-    return "".join("1" if r else "0" for r in results)
+def assemble_code(checks, problems: list[bool]) -> str:
+    """Compone el código binario de 8 bits.
+
+    Si el registry fue filtrado (CHECKS env var), los slots no seleccionados
+    quedan en 0. Esto significa "no se ejecutó", no "OK" — la diferencia
+    importa para leer el historial. El padding se hace por bit_index, no por
+    orden de iteración, para que la posición en el string refleje el slot.
+    """
+    bits = {c.bit_index: "1" if p else "0" for c, p in zip(checks, problems)}
+    return "".join(bits.get(i, "0") for i in range(8))
 
 
 def write_state(code: str) -> Path:
@@ -132,7 +140,18 @@ def main() -> int:
     parser.add_argument("--verbose", action="store_true", help="muestra qué slot falló (sin URLs)")
     parser.add_argument("--dry-run", action="store_true", help="no escribe ni commitea")
     parser.add_argument("--quiet", action="store_true", help="cero output, solo exit code")
+    parser.add_argument(
+        "--only",
+        type=str,
+        default=None,
+        metavar="SLOTS",
+        help="corre solo los slots indicados (ej: '0,3' o 'URL,SSL'). Mismo formato que env var CHECKS.",
+    )
     args = parser.parse_args()
+
+    # --only tiene prioridad sobre CHECKS (override de CLI)
+    if args.only is not None:
+        os.environ["CHECKS"] = args.only
 
     load_dotenv()
     try:
@@ -142,7 +161,7 @@ def main() -> int:
 
     registry = build_registry(timeout=timeout)
     results = [c.execute() for c in registry]
-    code = assemble_code(results)
+    code = assemble_code(registry, results)
 
     if not args.quiet:
         # Única línea a stdout: el código binario. Nada más.

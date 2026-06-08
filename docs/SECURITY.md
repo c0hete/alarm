@@ -70,6 +70,42 @@ Por qué:
 
 Si un endpoint que necesitás monitorear hace redirect, eso es **una señal de que el endpoint está mal configurado**. Reportalo al owner del servicio en vez de bypassear la seguridad.
 
+## SSRF protection (opt-out)
+
+**Por defecto, las requests a IPs privadas / loopback / link-local / metadata se bloquean.**
+
+Implementado en `checks/security.py::is_private_ip()` y aplicado via `_ssrf_check()` en `safe_request()`, `safe_get_json()` y `safe_ssl_check()`.
+
+### Qué se bloquea
+
+- Privadas RFC1918: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`
+- Loopback: `127.0.0.0/8`, `::1`
+- Link-local: `169.254.0.0/16` (**incluye AWS metadata en 169.254.169.254 y GCP**)
+- CGNAT: `100.64.0.0/10`
+- IPv6 ULA: `fc00::/7`
+- ~10 redes más (reserved, multicast, etc.)
+
+Ver lista completa en `checks/security.py::_PRIVATE_NETS`.
+
+### Por qué
+
+Si alguien pone `URL_PRIMARY=https://169.254.169.254/latest/meta-data/iam/security-credentials/`, el alarm intentaría robar credenciales IAM de AWS. En GitHub Actions los runners tienen acceso a metadata services. Esto lo previene.
+
+### Opt-out para infra local
+
+```bash
+ALLOW_PRIVATE_TARGETS=true
+```
+
+Acepta: `1`, `true`, `yes`, `on` (case-insensitive). Cualquier otro valor = bloqueado.
+
+**Cuándo usar:** Si necesitás monitorear infra local o de una VPN (e.g., `https://192.168.1.1/router-admin`). El operador decide conscientemente exponer esto.
+
+### Limitaciones
+
+- **No evalúa hostnames.** `https://iacode.cl/admin` pasa el check. Para protección contra DNS rebinding, correr el alarm en un entorno con DNS confiable.
+- **Es defense-in-depth, no garantía absoluta.** El operador debe revisar las URLs que configura.
+
 ## Excepciones silenciosas
 
 **Cualquier excepción en un check se reporta como `1` (problema) sin imprimir nada.**

@@ -497,6 +497,37 @@ Para que quede registro, estos patrones fueron buscados y **no se encontraron**:
 
 ---
 
+## Actualizaciones
+
+### 2026-06-07: Round 2 de fixes aplicados
+
+Después del audit inicial, el usuario pidió que los pendientes "que se cierre algo que puede ser que sea limitante" se implementen como **opciones de elegir** (granularidad). Se aplicaron los siguientes:
+
+**#2 — SSRF protection (ahora con opt-out granular):**
+- Implementado `is_private_ip()`, `is_safe_target()`, `_ssrf_check()` en `security.py`
+- Default seguro: bloquea RFC1918, loopback, link-local (incluye metadata AWS/GCP), CGNAT, IPv6 ULA, etc.
+- Opt-out: `ALLOW_PRIVATE_TARGETS=true` para los que necesiten monitorear infra local
+- El check evalúa IPs literales (no hostnames, documentado)
+
+**#7 — pip-audit semanal:**
+- Nuevo workflow `.github/workflows/audit.yml`
+- Corre lunes 06:00 UTC, modo `workflow_dispatch` para trigger manual
+- `--strict --requirement requirements.txt` (falla si hay vulns con fix)
+
+**Extras (granularidad):**
+- `CHECKS` env var: corre solo slots específicos (formato: `0,3` o `URL,SSL`)
+- `--only` CLI flag: override de CHECKS para tests
+- `assemble_code()` ahora paddea por `bit_index` (no por orden de iteración)
+
+**Severidad actualizada tras round 2:**
+- 0 muy altos, 0 altos
+- 0 medio-altos (los 4 estaban pendientes; #1 #3 #4 cerrados en round 1, #2 cerrado en round 2)
+- 2 medios (#5 #6 cerrados en round 1, #7 cerrado en round 2)
+- 11 bajos (sin cambios)
+- 0 nuevos
+
+---
+
 ## Cómo se hizo este audit
 
 1. **Inventario:** listado de todos los archivos del proyecto (excluyendo `.git/`, `__pycache__/`).

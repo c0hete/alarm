@@ -1,0 +1,37 @@
+name: audit
+
+on:
+  schedule:
+    # Cada lunes 06:00 UTC
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+# No necesita push ni otros permisos: solo lee el repo y reporta.
+permissions: {}
+
+jobs:
+  pip-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install pip-audit
+        run: pip install pip-audit
+
+      - name: Audit dependencies
+        # --strict: exit 1 si hay vulns con fix conocido
+        # --no-deps: solo audita las deps directas (no transitive)
+        # Para transitive: quitar --no-deps
+        run: pip-audit --strict --requirement requirements.txt

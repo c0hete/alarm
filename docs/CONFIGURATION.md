@@ -46,6 +46,8 @@ Toda la configuración del alarm viene de **variables de entorno**. El archivo `
 | Variable | Default | Descripción |
 |---|---|---|
 | `CHECK_TIMEOUT` | `10` | Timeout en segundos para todos los checks de red. |
+| `CHECKS` | *(vacío)* | Filtra los slots que corren. Ver [Granularidad](#granularidad-checks). |
+| `ALLOW_PRIVATE_TARGETS` | `false` | Opt-out del check SSRF. Ver [SSRF opt-out](#ssrf-opt-out). |
 
 ## Asignación de bits
 
@@ -60,6 +62,66 @@ Posición:  0  1  2  3  4  5  6  7
 ```
 
 Ejemplo: `00000010` = bit 1 prendido = "URL secundaria tiene problema".
+
+## Granularidad (`CHECKS`)
+
+Por defecto, los 8 slots corren siempre. La env var `CHECKS` permite correr solo un subset, para:
+
+- **Reducir requests** (cada check de red = 1+ requests)
+- **Testear un slot específico** sin ruido del resto
+- **Debugging**: ver qué falla en un slot aislado
+
+### Formato
+
+Lista separada por comas. Cada item puede ser:
+- Un **número de bit** (0-7): match exacto
+- Una **palabra clave**: match por substring (case-insensitive) contra el nombre del slot
+
+### Ejemplos
+
+```bash
+# Solo URL primaria + SSL primaria (2 slots, 2 requests)
+CHECKS=0,3
+
+# Todos los URL y SSL (5 slots)
+CHECKS=URL,SSL
+
+# Solo el check de backup
+CHECKS=backup
+```
+
+### CLI override
+
+`--only` tiene prioridad sobre `CHECKS` y acepta el mismo formato:
+
+```bash
+python alarm.py --only=0,3 --dry-run --verbose
+```
+
+### Padding del código
+
+El código binario siempre tiene 8 caracteres. Los slots filtrados quedan en `0` (que significa "no se ejecutó", no "OK"). El padding se hace por `bit_index`, no por orden de iteración: si filtrás slot 0 y 3, el código es `ABCDEFGH` donde A = slot 0, D = slot 3, resto = 0.
+
+## SSRF opt-out (`ALLOW_PRIVATE_TARGETS`)
+
+Por defecto, las requests se **bloquean** si el target es una IP literal en una red privada/loopback/metadata. Esto previene SSRF (server-side request forgery).
+
+**Redes bloqueadas por default:**
+- Privadas RFC1918: `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`
+- Loopback: `127.0.0.0/8`, `::1`
+- Link-local: `169.254.0.0/16` (incluye AWS/GCP metadata en `169.254.169.254`)
+- CGNAT: `100.64.0.0/10`
+- IPv6 ULA: `fc00::/7`
+- Y ~10 más (reserved, multicast, etc.)
+
+**Opt-out** (solo si necesitás monitorear infra local):
+```bash
+ALLOW_PRIVATE_TARGETS=true
+```
+
+Acepta: `1`, `true`, `yes`, `on` (case-insensitive). Cualquier otro valor = bloqueado.
+
+**Importante:** el check evalúa **IPs literales**, no hostnames. Si ponés `https://iacode.cl/admin`, el check pasa (hostname, no IP). Para protección completa contra DNS rebinding, corré el alarm en un entorno con DNS confiable.
 
 ## Cómo agregar un nuevo check
 

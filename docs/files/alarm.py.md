@@ -17,12 +17,14 @@ python alarm.py [opciones]
 | `--verbose` | off | Imprime en stderr qué bit falló. **No** muestra URLs ni hostnames. |
 | `--quiet` | off | Cero output. Solo exit code. Usado por el workflow de CI. |
 | `--dry-run` | off | Imprime el código y termina. No escribe archivos, no commitea. |
+| `--only SLOTS` | (none) | Corre solo los slots indicados. Mismo formato que env var `CHECKS`. Override de CLI. |
 
 **Combinaciones:**
 - (sin flags) → imprime el código en stdout, escribe `state/YYYY-MM-DD.txt`, commitea, pushea
 - `--verbose` → como arriba + `bit N [0/1]` en stderr
 - `--quiet` → no imprime, hace todo el flujo
 - `--dry-run` → solo imprime código
+- `--only=0,3 --verbose` → corre solo slots 0 y 3, muestra bits en stderr
 
 ## Funciones
 
@@ -61,6 +63,8 @@ Convierte `[bit0, bit1, ..., bit7]` en `"ABCDEFGH"`. Bit 0 va a la izquierda.
 def assemble_code(results: list[bool]) -> str:
     return "".join("1" if r else "0" for r in results)
 ```
+
+**Nota:** Con el env var `CHECKS` o `--only`, el registry puede tener menos de 8 checks. En ese caso, `assemble_code` paddea con `0` por `bit_index` (no por orden de iteración). Los slots no seleccionados quedan en `0` ("no se ejecutó", no "OK").
 
 ### `write_state(code: str) -> Path`
 

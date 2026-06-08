@@ -9,10 +9,12 @@ Helpers de bajo nivel usados por **todos** los checks. Centraliza la política d
 ```python
 _ALLOWED_SCHEMES: Final = frozenset({"https"})
 _MIN_SSL_DAYS: Final = 14
+_PRIVATE_NETS: Final = [ipaddress.ip_network(...) for ...]
 ```
 
 - `_ALLOWED_SCHEMES`: set inmutable de schemes permitidos. Solo `https`. Cualquier otro (incluyendo `http`) se rechaza.
 - `_MIN_SSL_DAYS`: días mínimos de validez del cert SSL. Si quedan menos, hay problema.
+- `_PRIVATE_NETS`: lista de redes bloqueadas por el check SSRF (RFC1918, loopback, link-local, CGNAT, IPv6 ULA, multicast, reserved, etc.). Ver [SSRF protection](#ssrf-protection-opt-out) abajo.
 
 ## Supresión de warnings
 
@@ -221,5 +223,97 @@ Parsea una fecha ISO 8601 con o sin timezone, devuelve un `datetime` UTC. `None`
 | No-leak de URLs/hostnames | `try/except Exception` en cada función, sin `print` ni `log` |
 | No-leak de mensajes de error | Mismo try/except, no se imprime `exc` |
 | Supresión de warnings | `urllib3.disable_warnings` al import |
+| SSRF protection (opt-out) | `_ssrf_check`, llamado desde `safe_request`/`safe_get_json`/`safe_ssl_check` |
 
 **Si vas a agregar un check nuevo:** usá estos helpers. Si necesitás algo que no está cubierto (por ejemplo, DNS lookup, ping), agregalo acá y mantene la misma política.
+
+## SSRF protection (opt-out)
+
+Tres helpers para defense-in-depth contra SSRF. Aplicados automaticamente por `safe_request`, `safe_get_json`, `safe_ssl_check`.
+
+### `_PRIVATE_NETS` (constante)
+
+Lista de `ipaddress.ip_network` que se bloquean. Incluye (no exhaustivo):
+
+| Red | Razón |
+|---|---|
+| `0.0.0.0/8` | "This network" |
+| `10.0.0.0/8` | RFC1918 private |
+| `100.64.0.0/10` | CGNAT |
+| `127.0.0.0/8` | Loopback IPv4 |
+| `169.254.0.0/16` | Link-local (incluye AWS/GCP metadata `169.254.169.254`) |
+| `172.16.0.0/12` | RFC1918 private |
+| `192.0.0.0/24`, `192.0.2.0/24` | IETF reserved / TEST-NET-1 |
+| `192.168.0.0/16` | RFC1918 private |
+| `198.18.0.0/15` | Benchmarking |
+| `198.51.100.0/24`, `203.0.113.0/24` | TEST-NET-2 / TEST-NET-3 |
+| `224.0.0.0/4`, `240.0.0.0/4` | Multicast / Reserved |
+| `::/128`, `::1/128` | IPv6 unspecified / loopback |
+| `::ffff:0:0/96` | IPv4-mapped |
+| `64:ff9b::/96`, `100::/64` | IPv4-IPv6 translation / discard |
+| `2001::/32`, `2001:db8::/32` | Teredo / documentation |
+| `fc00::/7`, `fe80::/10`, `ff00::/8` | IPv6 ULA / link-local / multicast |
+
+### `is_private_ip(host: str) -> bool`
+
+```python
+def is_private_ip(host: str) -> bool:
+    if not host:
+        return True
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return False  # hostname, no IP literal
+    return any(ip in net for net in _PRIVATE_NETS)
+```
+
+**Comportamiento:**
+- IP literal en red bloqueada → `True` (peligrosa)
+- IP literal pública → `False` (segura)
+- Hostname (DNS) → `False` (asume OK — no hace DNS lookup)
+
+**Por qué no evalúa hostnames:** evitar side effects (DNS lookup). El operador es responsable de no poner hostnames que resuelvan a IPs privadas. Para entornos de máxima seguridad, correr el alarm con un egress proxy que filtre.
+
+### `is_safe_target(url_or_host: str) -> bool`
+
+```python
+def is_safe_target(url_or_host: str) -> bool:
+    if not url_or_host:
+        return False
+    if "://" in url_or_host:
+        try:
+            parsed = urllib.parse.urlparse(url_or_host)
+            host = parsed.hostname
+        except (ValueError, AttributeError):
+            return False
+    else:
+        host = url_or_host.strip()
+    if not host:
+        return False
+    return not is_private_ip(host)
+```
+
+Wrapper que acepta tanto URL (`https://10.0.0.1/foo`) como hostname (`10.0.0.1`). Devuelve `True` si el target es seguro.
+
+### `_ssrf_check(url_or_host: str) -> bool`
+
+```python
+def _ssrf_check(url_or_host: str) -> bool:
+    if _ssrf_opted_out():
+        return True  # bypass explícito
+    return is_safe_target(url_or_host)
+```
+
+Aplica el opt-out. Devuelve `True` si el target pasa el check (o si el usuario deshabilitó la protección).
+
+### Opt-out: `ALLOW_PRIVATE_TARGETS`
+
+```bash
+ALLOW_PRIVATE_TARGETS=true   # permite targets privados
+```
+
+Acepta: `1`, `true`, `yes`, `on` (case-insensitive). Default: bloqueado.
+
+**Por qué es opt-out y no opt-in:** security-by-default. El operador que necesita monitorear infra local debe ser explícito al respecto.
+
+**Usado por:** `safe_request`, `safe_get_json`, `safe_ssl_check`. Todos llaman `_ssrf_check` antes de tocar la red.
